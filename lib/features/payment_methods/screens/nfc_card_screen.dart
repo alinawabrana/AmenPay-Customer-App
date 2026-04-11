@@ -1,78 +1,88 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:palmpay/app_routes.dart';
+import 'package:palmpay/features/payment_methods/models/nfc_payment_method_status_model.dart';
+import 'package:palmpay/features/payment_methods/providers/payment_methods_refresh_provider.dart';
 import 'package:palmpay/l10n/app_localizations.dart';
 import 'package:palmpay/services/api_service.dart';
 import 'package:palmpay/utils/themes/text_theme.dart';
 import 'package:palmpay/widgets/card_preview.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:palmpay/features/payment_methods/providers/payment_methods_refresh_provider.dart';
-
-import '../../authentication/models/profile/user_model.dart';
-import '../../home/models/QR Code/payment_method_model.dart';
-
-class NfcCardScreen extends StatefulWidget {
+class NfcCardScreen extends ConsumerStatefulWidget {
   const NfcCardScreen({super.key});
 
   @override
-  State<NfcCardScreen> createState() => _NfcCardScreenState();
+  ConsumerState<NfcCardScreen> createState() => _NfcCardScreenState();
 }
 
-class _NfcCardScreenState extends State<NfcCardScreen> {
-  late Future<_NfcData> _future;
+class _NfcCardScreenState extends ConsumerState<NfcCardScreen> {
+  late Future<List<NfcPaymentMethodStatus>> _future;
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+
+    ref.listenManual<int>(paymentMethodsRefreshProvider, (previous, next) {
+      setState(() {
+        _future = _load();
+      });
+    });
   }
 
-  Future<_NfcData> _load() async {
+  Future<List<NfcPaymentMethodStatus>> _load() async {
     final results = await Future.wait([
-      ApiService.getUserDetails(),
-      ApiService.getPaymentMethods(),
+      ApiService.getPaymentMethodsWithStatus(),
+      ApiService.getDefaultPaymentMethodCheck(),
     ]);
-
-    final user = results[0] as UserModel;
-    final paymentMethodsJson = results[1] as Map<String, dynamic>;
-
-    final paymentResponse = PaymentMethodsResponse.fromJson(paymentMethodsJson);
-
-    final methods = paymentResponse.paymentMethods;
-
-    final nfcStatuses = <int, bool>{};
-    await Future.wait(
-      methods.map((m) async {
-        try {
-          final res = await ApiService.getNfcStatus(paymentMethodId: m.id);
-          nfcStatuses[m.id] = _parseNfcStatus(res);
-        } catch (_) {
-          // keep fallback
-        }
-      }),
-    );
-
-    return _NfcData(user: user, methods: methods, nfcStatuses: nfcStatuses);
+    final response = results[0];
+    final defaultJson = results[1];
+    final defaultId = _extractDefaultPaymentMethodId(defaultJson);
+    final raw = response['payment_methods'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map(NfcPaymentMethodStatus.fromJson)
+        .map((method) => method.copyWith(
+              isDefault: defaultId != null && method.paymentMethodId == defaultId,
+            ))
+        .toList();
   }
 
-  bool _parseNfcStatus(Map<String, dynamic> json) {
-    final dynamic inner = json['data'];
-    final Map<String, dynamic>? dataMap = inner is Map<String, dynamic>
-        ? inner
-        : null;
+  int? _extractDefaultPaymentMethodId(Map<String, dynamic> json) {
+    final candidates = <dynamic>[
+      json['payment_method_id'],
+      json['id'],
+      json['default_payment_method_id'],
+      (json['data'] is Map<String, dynamic>)
+          ? (json['data'] as Map<String, dynamic>)['payment_method_id']
+          : null,
+      (json['data'] is Map<String, dynamic>)
+          ? (json['data'] as Map<String, dynamic>)['id']
+          : null,
+      (json['payment_method'] is Map<String, dynamic>)
+          ? (json['payment_method'] as Map<String, dynamic>)['payment_method_id']
+          : null,
+      (json['payment_method'] is Map<String, dynamic>)
+          ? (json['payment_method'] as Map<String, dynamic>)['id']
+          : null,
+    ];
 
-    dynamic v = json['NFC_status'];
-    v ??= json['nfc_status'];
-    v ??= dataMap?['NFC_status'] ?? dataMap?['nfc_status'];
-
-    if (v is bool) return v;
-    if (v is num) return v != 0;
-    if (v is String) {
-      final s = v.toLowerCase().trim();
-      return s == '1' || s == 'true' || s == 'active' || s == 'enabled';
+    for (final value in candidates) {
+      final parsed = _coerceId(value);
+      if (parsed != null && parsed > 0) return parsed;
     }
-    return false;
+    return null;
+  }
+
+  int? _coerceId(dynamic value) {
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   @override
@@ -103,7 +113,7 @@ class _NfcCardScreenState extends State<NfcCardScreen> {
         title: Text(l10n.t('nfc_card'), style: ATextTheme.textTheme.titleLarge),
         centerTitle: true,
       ),
-      body: FutureBuilder<_NfcData>(
+      body: FutureBuilder<List<NfcPaymentMethodStatus>>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
@@ -122,10 +132,7 @@ class _NfcCardScreenState extends State<NfcCardScreen> {
             );
           }
 
-          final data = snapshot.data!;
-          final user = data.user;
-          final methods = data.methods;
-          final nfcStatuses = data.nfcStatuses;
+          final methods = snapshot.data ?? const [];
 
           return SingleChildScrollView(
             padding: const EdgeInsetsDirectional.fromSTEB(24, 24, 24, 24),
@@ -150,7 +157,6 @@ class _NfcCardScreenState extends State<NfcCardScreen> {
                     letterSpacing: -0.5,
                     color: const Color(0xFF333333),
                   ),
-                  textAlign: TextAlign.start,
                 ),
                 const SizedBox(height: 12),
                 if (methods.isEmpty)
@@ -164,20 +170,60 @@ class _NfcCardScreenState extends State<NfcCardScreen> {
                   )
                 else
                   ...methods.map(
-                    (m) => Padding(
-                      padding: const EdgeInsetsDirectional.only(bottom: 12),
-                      child: _NfcCardTile(
-                        method: m,
-                        nfcActive: nfcStatuses[m.id],
-                        onTap: () async {
-                          await context.push(
-                            '${AppRoutes.paymentMethodsNfcPath}/detail',
-                            extra: <String, dynamic>{'user': user, 'method': m},
-                          );
+                    (method) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _NfcMethodTile(
+                        method: method,
+                        onOpen: () async {
+                          if (method.isNfcNotEnrolled) {
+                            await context.push(
+                              AppRoutes.paymentMethodsNfcEnrollPath,
+                              extra: {'method': method},
+                            );
+                          } else {
+                            await context.push(
+                              '${AppRoutes.paymentMethodsNfcPath}/detail',
+                              extra: {'method': method},
+                            );
+                          }
                           if (!context.mounted) return;
                           setState(() {
                             _future = _load();
                           });
+                        },
+                        onToggleDefault: (isDefault) async {
+                          try {
+                            final res =
+                                await ApiService.toggleDefaultPaymentMethod(
+                                  paymentMethodId: method.paymentMethodId,
+                                  isDefault: isDefault,
+                                );
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  res['message']?.toString() ??
+                                      l10n.t('default_payment_method_updated'),
+                                ),
+                              ),
+                            );
+                            ref
+                                .read(paymentMethodsRefreshProvider.notifier)
+                                .state++;
+                            setState(() {
+                              _future = _load();
+                            });
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  e.toString().replaceAll('Exception: ', ''),
+                                ),
+                                backgroundColor: const Color(0xFFB91C1C),
+                              ),
+                            );
+                          }
                         },
                       ),
                     ),
@@ -191,278 +237,147 @@ class _NfcCardScreenState extends State<NfcCardScreen> {
   }
 }
 
-class _NfcCardTile extends StatelessWidget {
-  final PaymentMethod method;
-  final bool? nfcActive;
-  final VoidCallback onTap;
+class _NfcMethodTile extends StatelessWidget {
+  final NfcPaymentMethodStatus method;
+  final VoidCallback onOpen;
+  final Future<void> Function(bool isDefault) onToggleDefault;
 
-  const _NfcCardTile({
+  const _NfcMethodTile({
     required this.method,
-    required this.nfcActive,
-    required this.onTap,
+    required this.onOpen,
+    required this.onToggleDefault,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isActive = nfcActive ?? (method.status.toLowerCase() == 'active');
-    final masked = _maskForList(method.cardNumber);
+    final statusLabel = method.isNfcActive
+        ? l10n.t('active')
+        : method.isNfcInactive
+        ? l10n.t('inactive')
+        : l10n.t('not_enrolled');
+    final badgeColor = method.isNfcActive
+        ? const Color(0xFF238EC2)
+        : method.isNfcInactive
+        ? const Color(0xFF9CA3AF)
+        : const Color(0xFFB91C1C);
+    final badgeBg = method.isNfcActive
+        ? const Color(0xFFEFF6FF)
+        : method.isNfcInactive
+        ? const Color(0xFFF3F4F6)
+        : const Color(0xFFFEF2F2);
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0D000000),
-              offset: Offset(0, 1),
-              blurRadius: 2,
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 16, 14),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: Color(0xFFEFF6FF),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.credit_card,
-                color: Color(0xFF238EC2),
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    masked,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      height: 20 / 14,
-                      letterSpacing: -0.5,
-                      color: const Color(0xFF333333),
-                    ),
-                    textAlign: TextAlign.start,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    method.expiryDate,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                      height: 16 / 12,
-                      letterSpacing: -0.5,
-                      color: const Color(0xFF6B7280),
-                    ),
-                    textAlign: TextAlign.start,
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 10, 6),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? const Color(0xFFEFF6FF)
-                    : const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isActive
-                          ? const Color(0xFF238EC2)
-                          : const Color(0xFF9CA3AF),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    isActive
-                        ? l10n.t('active_status')
-                        : l10n.t('inactive_status'),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      height: 16 / 12,
-                      letterSpacing: -0.5,
-                      color: const Color(0xFF333333),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static String _maskForList(String raw) {
-    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) return '•••• •••• •••• ••••';
-    final last4 = digits.length >= 4
-        ? digits.substring(digits.length - 4)
-        : digits;
-    return '•••• •••• •••• $last4';
-  }
-}
-
-class _AccountInfoCard extends StatelessWidget {
-  final String accountName;
-  final String cardNumber;
-
-  const _AccountInfoCard({required this.accountName, required this.cardNumber});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D000000),
-            offset: Offset(0, 1),
-            blurRadius: 2,
-            spreadRadius: 0,
-          ),
-        ],
       ),
-      padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 20),
+      padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.t('account_information'),
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(height: 28 / 18),
-          ),
-          const SizedBox(height: 16),
-          _InfoRow(title: l10n.t('account_name'), value: accountName),
-          const SizedBox(height: 12),
-          _InfoRow(title: l10n.t('bank_card_number'), value: cardNumber),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String title;
-  final String value;
-
-  const _InfoRow({required this.title, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final titleStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
-      height: 20 / 14,
-      letterSpacing: -0.5,
-      color: const Color(0xFF4B5563),
-    );
-
-    final valueStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      height: 20 / 14,
-      letterSpacing: -0.5,
-      color: const Color(0xFF333333),
-    );
-
-    return Row(
-      children: [
-        Expanded(
-          child: Text(title, style: titleStyle, textAlign: TextAlign.start),
-        ),
-        const SizedBox(width: 12),
-        Text(value, style: valueStyle, textAlign: TextAlign.start),
-      ],
-    );
-  }
-}
-
-class _ActiveToggleCard extends StatelessWidget {
-  final bool isActive;
-  final ValueChanged<bool> onChanged;
-
-  const _ActiveToggleCard({required this.isActive, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Container(
-      height: 72,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D000000),
-            offset: Offset(0, 1),
-            blurRadius: 2,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isActive ? l10n.t('nfc_active') : l10n.t('nfc_inactive'),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    height: 20 / 14,
-                    letterSpacing: -0.5,
-                    color: const Color(0xFF333333),
-                  ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      method.cardHolderName,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF333333),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      method.cardNumber,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF6B7280),
+                      ),
+                    ),
+                    if (method.isDefault) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFFDF5),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          l10n.t('default_label'),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF00AA44),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  l10n.t('toggle_contactless_payments'),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  statusLabel,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    height: 16 / 12,
-                    letterSpacing: -0.5,
-                    color: const Color(0xFF4B5563),
+                    fontWeight: FontWeight.w600,
+                    color: badgeColor,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Switch(
-            value: isActive,
-            onChanged: onChanged,
-            activeThumbColor: const Color(0xFF238EC2),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: method.isNfcNotEnrolled
+                      ? ElevatedButton(
+                          onPressed: onOpen,
+                          child: Text(l10n.t('enroll_now')),
+                        )
+                      : OutlinedButton(
+                          onPressed: onOpen,
+                          child: Text(l10n.t('view_detail')),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.t('default_label'),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF4B5563),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Switch(
+                    value: method.isDefault,
+                    onChanged: (value) => onToggleDefault(value),
+                    activeThumbColor: const Color(0xFF00AA44),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -470,87 +385,24 @@ class _ActiveToggleCard extends StatelessWidget {
   }
 }
 
-class _NfcData {
-  final UserModel user;
-  final List<PaymentMethod> methods;
-  final Map<int, bool> nfcStatuses;
-
-  const _NfcData({
-    required this.user,
-    required this.methods,
-    required this.nfcStatuses,
-  });
-}
-
-class NfcCardDetailScreen extends StatefulWidget {
+class NfcCardDetailScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> args;
 
   const NfcCardDetailScreen({super.key, required this.args});
 
   @override
-  State<NfcCardDetailScreen> createState() => _NfcCardDetailScreenState();
+  ConsumerState<NfcCardDetailScreen> createState() => _NfcCardDetailScreenState();
 }
 
-class _NfcCardDetailScreenState extends State<NfcCardDetailScreen> {
-  late bool _isActive;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    final method = widget.args['method'] as PaymentMethod;
-    _isActive = method.status.toLowerCase() == 'active';
-    _fetchNfcStatus();
-  }
-
-  Future<void> _fetchNfcStatus() async {
-    final method = widget.args['method'] as PaymentMethod;
-
-    try {
-      final res = await ApiService.getNfcStatus(paymentMethodId: method.id);
-      final status = _parseNfcStatus(res);
-      if (!mounted) return;
-      setState(() {
-        _isActive = status;
-        _isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  bool _parseNfcStatus(Map<String, dynamic> json) {
-    final dynamic inner = json['data'];
-    final Map<String, dynamic>? dataMap = inner is Map<String, dynamic>
-        ? inner
-        : null;
-
-    dynamic v = json['NFC_status'];
-    v ??= json['nfc_status'];
-    v ??= dataMap?['NFC_status'] ?? dataMap?['nfc_status'];
-
-    if (v is bool) return v;
-    if (v is num) return v != 0;
-    if (v is String) {
-      final s = v.toLowerCase().trim();
-      return s == '1' || s == 'true' || s == 'active' || s == 'enabled';
-    }
-    return false;
-  }
+class _NfcCardDetailScreenState extends ConsumerState<NfcCardDetailScreen> {
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final user = widget.args['user'] as UserModel;
-    final method = widget.args['method'] as PaymentMethod;
-
-    final cardNumber = _formatCardNumber(method.cardNumber);
-    final holder = (method.cardHolderName.isNotEmpty)
-        ? method.cardHolderName.toUpperCase()
-        : user.fullname.toUpperCase();
+    final method = widget.args['method'] as NfcPaymentMethodStatus;
+    final holder = method.cardHolderName.toUpperCase();
+    final isActive = method.isNfcActive;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -581,47 +433,30 @@ class _NfcCardDetailScreenState extends State<NfcCardDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             CardPreview(
-              cardNumber: cardNumber.isEmpty
-                  ? '•••• •••• •••• ••••'
-                  : '•••• •••• •••• $cardNumber',
+              cardNumber: method.cardNumber,
               cardholderName: holder,
               expiryDate: method.expiryDate,
             ),
             const SizedBox(height: 24),
-            _AccountInfoCard(
-              accountName: user.fullname,
-              cardNumber: _mask(method.cardNumber),
-            ),
+            _NfcInfoCard(method: method),
             const SizedBox(height: 24),
             _ActiveToggleCard(
-              isActive: _isActive,
+              isActive: isActive,
               onChanged: _isLoading
                   ? (_) {}
                   : (val) async {
-                      final prev = _isActive;
-                      setState(() {
-                        _isActive = val;
-                        _isLoading = true;
-                      });
-
+                      setState(() => _isLoading = true);
                       try {
-                        await ApiService.updateNfcStatus(
-                          paymentMethodId: method.id,
-                          isEnabled: val,
+                        await ApiService.toggleNfc(
+                          paymentMethodId: method.paymentMethodId,
+                          action: val ? 'activate' : 'deactivate',
                         );
                         if (!context.mounted) return;
-                        ProviderScope.containerOf(
-                          context,
-                        ).read(paymentMethodsRefreshProvider.notifier).state++;
-                        setState(() {
-                          _isLoading = false;
-                        });
+                        ref.read(paymentMethodsRefreshProvider.notifier).state++;
+                        context.pop();
                       } catch (e) {
                         if (!context.mounted) return;
-                        setState(() {
-                          _isActive = prev;
-                          _isLoading = false;
-                        });
+                        setState(() => _isLoading = false);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
@@ -633,38 +468,606 @@ class _NfcCardDetailScreenState extends State<NfcCardDetailScreen> {
                       }
                     },
             ),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: () => context.push(AppRoutes.addCardPath),
-                icon: const Icon(Icons.add, size: 18),
-                label: Text(l10n.t('add_payment_method')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class NfcEnrollScreen extends ConsumerStatefulWidget {
+  final Map<String, dynamic> args;
+
+  const NfcEnrollScreen({super.key, required this.args});
+
+  @override
+  ConsumerState<NfcEnrollScreen> createState() => _NfcEnrollScreenState();
+}
+
+class _NfcEnrollScreenState extends ConsumerState<NfcEnrollScreen> {
+  int _step = 1;
+  bool _isLoading = true;
+  String? _error;
+  String? _sessionId;
+  Timer? _pollTimer;
+  bool _isClaimed = false;
+
+  NfcPaymentMethodStatus get _method =>
+      widget.args['method'] as NfcPaymentMethodStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    _createSession();
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _createSession() async {
+    try {
+      final response = await ApiService.createNfcSession(
+        paymentMethodId: _method.paymentMethodId,
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _sessionId = response['session_id']?.toString();
+        _isLoading = false;
+      });
+
+      if ((_sessionId ?? '').isNotEmpty) {
+        _startPolling();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+      final sessionId = _sessionId;
+      if (!mounted || sessionId == null || sessionId.isEmpty) return;
+
+      try {
+        final response = await ApiService.getNfcSessionStatus(
+          sessionId: sessionId,
+        );
+        final status = (response['status'] ?? '').toString().toLowerCase();
+        if (!mounted) return;
+
+        if (status == 'created') {
+          setState(() {
+            _isClaimed = false;
+          });
+          return;
+        }
+
+        if (status == 'claimed') {
+          setState(() {
+            _isClaimed = true;
+            _step = 2;
+          });
+          return;
+        }
+
+        if (status == 'completed') {
+          _pollTimer?.cancel();
+          ref.read(paymentMethodsRefreshProvider.notifier).state++;
+          setState(() {
+            _isClaimed = true;
+            _step = 3;
+          });
+          return;
+        }
+
+        if (status == 'failed' || status == 'expired') {
+          _pollTimer?.cancel();
+          final message = response['last_error']?.toString().trim().isNotEmpty ==
+                  true
+              ? response['last_error'].toString()
+              : response['message']?.toString() ??
+                    'NFC enrollment ${status == 'expired' ? 'expired' : 'failed'}.';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message)),
+          );
+          context.pop();
+        }
+      } catch (_) {}
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final qrData = _sessionId ?? '';
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => context.pop(),
+          icon: SizedBox(
+            width: 17,
+            height: 15,
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: Icon(
+                Icons.arrow_back,
+                color: const Color(0xFF333333),
+                textDirection: Directionality.of(context),
               ),
+            ),
+          ),
+        ),
+        title: Text(l10n.t('nfc_enroll_title'), style: ATextTheme.textTheme.titleLarge),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SimpleStepIndicator(step: _step),
+            const SizedBox(height: 24),
+            Expanded(
+              child: _step == 1
+                  ? _NfcStepOne(
+                      qrData: qrData,
+                      loading: _isLoading,
+                      error: _error,
+                      onContinue: () {
+                        setState(() => _step = 2);
+                      },
+                    )
+                  : _step == 2
+                  ? _NfcStepTwo(isClaimed: _isClaimed)
+                  : _NfcStepThree(
+                      onDone: () => context.pop(),
+                      title: l10n.t('enrollment_complete'),
+                    ),
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  String _formatCardNumber(String raw) {
-    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) return '';
-    final buf = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      if (i > 0 && i % 4 == 0) buf.write(' ');
-      buf.write(digits[i]);
-    }
-    return buf.toString();
+class _SimpleStepIndicator extends StatelessWidget {
+  final int step;
+
+  const _SimpleStepIndicator({required this.step});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final labels = [l10n.t('nfc_step_qr'), l10n.t('nfc_step_scan'), l10n.t('done')];
+    return Row(
+      children: List.generate(labels.length * 2 - 1, (index) {
+        if (index.isOdd) {
+          final active = step > (index ~/ 2) + 1;
+          return Expanded(
+            child: Container(
+              height: 4,
+              color: active
+                  ? const Color(0xFF238EC2)
+                  : const Color(0xFFE5E7EB),
+            ),
+          );
+        }
+        final number = (index ~/ 2) + 1;
+        final active = step >= number;
+        return Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: active ? const Color(0xFF238EC2) : const Color(0xFFF3F4F6),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            '$number',
+            style: TextStyle(
+              color: active ? Colors.white : const Color(0xFF9CA3AF),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
+      }),
+    );
   }
+}
 
-  String _mask(String raw) {
-    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) return '';
-    final last4 = digits.length >= 4
-        ? digits.substring(digits.length - 4)
-        : digits;
-    return '**** $last4';
+class _NfcStepOne extends StatelessWidget {
+  final String qrData;
+  final bool loading;
+  final String? error;
+  final VoidCallback onContinue;
+
+  const _NfcStepOne({
+    required this.qrData,
+    required this.loading,
+    required this.error,
+    required this.onContinue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.nfc_rounded,
+                      color: Color(0xFF238EC2),
+                      size: 28,
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        AppLocalizations.of(context).t('nfc_scan_qr_pos'),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(context).t('nfc_pos_claims_session'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  height: 220,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFF238EC2),
+                      width: 2,
+                    ),
+                    color: const Color(0xFFEFF6FF),
+                  ),
+                  child: Center(
+                    child: loading
+                        ? const CircularProgressIndicator()
+                        : qrData.isEmpty
+                        ? const Icon(Icons.qr_code, size: 120)
+                        : QrImageView(
+                            data: qrData,
+                            version: QrVersions.auto,
+                            size: 170,
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Column(
+                    children: [
+                      _NfcInstructionRow(
+                        icon: Icons.qr_code_scanner_rounded,
+                        text: AppLocalizations.of(context).t('nfc_step1_pos_scan'),
+                      ),
+                      SizedBox(height: 12),
+                      _NfcInstructionRow(
+                        icon: Icons.point_of_sale_rounded,
+                        text: AppLocalizations.of(context).t('nfc_step2_keep_card'),
+                      ),
+                    ],
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFFB91C1C)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 56,
+          child: ElevatedButton(
+            onPressed: loading || error != null ? null : onContinue,
+            child: Text(AppLocalizations.of(context).t('nfc_i_scanned_qr')),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NfcStepTwo extends StatelessWidget {
+  final bool isClaimed;
+
+  const _NfcStepTwo({required this.isClaimed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 132,
+            height: 132,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFEFF6FF),
+              border: Border.all(color: const Color(0xFFBFDBFE), width: 2),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 5,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF238EC2),
+                    ),
+                  ),
+                ),
+                Icon(
+                  isClaimed ? Icons.contactless_rounded : Icons.point_of_sale_rounded,
+                  size: 48,
+                  color: const Color(0xFF238EC2),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            isClaimed
+                ? AppLocalizations.of(context).t('nfc_scanning_card')
+                : AppLocalizations.of(context).t('nfc_waiting_for_pos'),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isClaimed
+                ? AppLocalizations.of(context).t('nfc_pos_claimed_waiting_scan')
+                : AppLocalizations.of(context).t('nfc_waiting_pos_claim'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 15,
+              height: 1.5,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  isClaimed ? Icons.nfc_rounded : Icons.qr_code_scanner_rounded,
+                  color: const Color(0xFF238EC2),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    isClaimed
+                        ? AppLocalizations.of(context).t('nfc_keep_card_steady')
+                        : AppLocalizations.of(context).t('nfc_operator_scan_qr'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      height: 1.5,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NfcInstructionRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _NfcInstructionRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: const Color(0xFF238EC2), size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: Color(0xFF374151),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NfcStepThree extends StatelessWidget {
+  final VoidCallback onDone;
+  final String title;
+
+  const _NfcStepThree({required this.onDone, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.check_circle, size: 72, color: Color(0xFF00AA44)),
+        const SizedBox(height: 16),
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: 220,
+          height: 56,
+          child: ElevatedButton(
+            onPressed: onDone,
+            child: Text(AppLocalizations.of(context).t('done')),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NfcInfoCard extends StatelessWidget {
+  final NfcPaymentMethodStatus method;
+
+  const _NfcInfoCard({required this.method});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _InfoRow(title: 'Card Holder', value: method.cardHolderName),
+          const SizedBox(height: 12),
+          _InfoRow(title: 'Card Number', value: method.cardNumber),
+          const SizedBox(height: 12),
+          _InfoRow(
+            title: AppLocalizations.of(context).t('nfc_status_label'),
+            value: method.nfcStatus ??
+                AppLocalizations.of(context).t('not_enrolled'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String title;
+  final String value;
+
+  const _InfoRow({required this.title, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(title, style: Theme.of(context).textTheme.bodyMedium)),
+        const SizedBox(width: 12),
+        Text(value, style: Theme.of(context).textTheme.bodyMedium),
+      ],
+    );
+  }
+}
+
+class _ActiveToggleCard extends StatelessWidget {
+  final bool isActive;
+  final ValueChanged<bool> onChanged;
+
+  const _ActiveToggleCard({required this.isActive, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Container(
+      height: 72,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(isActive ? l10n.t('nfc_active') : l10n.t('nfc_inactive')),
+                const SizedBox(height: 2),
+                Text(l10n.t('toggle_contactless_payments')),
+              ],
+            ),
+          ),
+          Switch(
+            value: isActive,
+            onChanged: onChanged,
+            activeThumbColor: const Color(0xFF238EC2),
+          ),
+        ],
+      ),
+    );
   }
 }

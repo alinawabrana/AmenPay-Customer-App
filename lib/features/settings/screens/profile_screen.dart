@@ -7,6 +7,7 @@ import 'package:palmpay/services/api_service.dart';
 import 'package:palmpay/utils/constants/image_text.dart';
 import 'package:palmpay/utils/themes/text_theme.dart';
 
+import 'package:palmpay/features/settings/providers/notification_refresh_provider.dart';
 import 'package:palmpay/features/settings/providers/profile_refresh_provider.dart';
 
 import '../../authentication/models/profile/user_model.dart';
@@ -18,6 +19,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    ref.watch(notificationRefreshProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -50,20 +52,13 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () => context.push(AppRoutes.paymentMethodsPath),
                 ),
                 _SettingsRow(
-                  title: l10n.t('security_settings'),
-                  icon: Icons.shield,
-                  iconColor: const Color(0xFF16A34A),
-                  iconBackgroundColor: const Color(0xFFF0FDF4),
-                  showDivider: true,
-                  onTap: () {},
-                ),
-                _SettingsRow(
                   title: l10n.t('notifications'),
                   icon: Icons.notifications,
                   iconColor: const Color(0xFF9333EA),
                   iconBackgroundColor: const Color(0xFFFAF5FF),
                   showDivider: false,
-                  onTap: () {},
+                  showUnreadDot: true,
+                  onTap: () => context.push(AppRoutes.notificationsPath),
                 ),
               ],
             ),
@@ -76,41 +71,12 @@ class ProfileScreen extends ConsumerWidget {
             _SettingsCard(
               children: [
                 _SettingsRow(
-                  title: l10n.t('help_support'),
-                  icon: Icons.help,
-                  iconColor: const Color(0xFFEA580C),
-                  iconBackgroundColor: const Color(0xFFFFF7ED),
-                  showDivider: true,
-                  onTap: () {},
-                ),
-                _SettingsRow(
-                  title: l10n.t('contact_us'),
-                  icon: Icons.email,
-                  iconColor: const Color(0xFF238EC2),
-                  iconBackgroundColor: const Color(0xFFEFF6FF),
-                  showDivider: false,
-                  onTap: () {},
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _SettingsCard(
-              children: [
-                _SettingsRow(
                   title: l10n.t('terms_privacy'),
                   icon: Icons.description,
                   iconColor: const Color(0xFF4B5563),
                   iconBackgroundColor: const Color(0xFFF3F4F6),
                   showDivider: true,
-                  onTap: () {},
-                ),
-                _SettingsRow(
-                  title: l10n.t('rate_our_app'),
-                  icon: Icons.star,
-                  iconColor: const Color(0xFFCA8A04),
-                  iconBackgroundColor: const Color(0xFFFEF9C3),
-                  showDivider: true,
-                  onTap: () {},
+                  onTap: () => context.push(AppRoutes.termsPrivacyPath),
                 ),
                 _SettingsRow(
                   title: l10n.t('about'),
@@ -118,7 +84,7 @@ class ProfileScreen extends ConsumerWidget {
                   iconColor: const Color(0xFF4B5563),
                   iconBackgroundColor: const Color(0xFFF3F4F6),
                   showDivider: false,
-                  onTap: () {},
+                  onTap: () => context.push(AppRoutes.aboutPath),
                 ),
               ],
             ),
@@ -316,6 +282,7 @@ class _SettingsRow extends StatelessWidget {
   final Color iconColor;
   final Color iconBackgroundColor;
   final bool showDivider;
+  final bool showUnreadDot;
   final VoidCallback onTap;
 
   const _SettingsRow({
@@ -324,6 +291,7 @@ class _SettingsRow extends StatelessWidget {
     required this.iconColor,
     required this.iconBackgroundColor,
     required this.showDivider,
+    this.showUnreadDot = false,
     required this.onTap,
   });
 
@@ -345,14 +313,25 @@ class _SettingsRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: iconBackgroundColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 20, color: iconColor),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: iconBackgroundColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 20, color: iconColor),
+                ),
+                if (showUnreadDot)
+                  const PositionedDirectional(
+                    top: 2,
+                    end: 2,
+                    child: _UnreadDotBadge(),
+                  ),
+              ],
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -382,6 +361,31 @@ class _SettingsRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _UnreadDotBadge extends ConsumerWidget {
+  const _UnreadDotBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(notificationRefreshProvider);
+    return FutureBuilder<Map<String, dynamic>>(
+      future: ApiService.getUnreadNotificationsCount(),
+      builder: (context, snapshot) {
+        final unreadCount = (snapshot.data?['unread_count'] as num?)?.toInt() ?? 0;
+        if (unreadCount <= 0) return const SizedBox.shrink();
+        return Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: const Color(0xFFDC2626),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 1.5),
+          ),
+        );
+      },
     );
   }
 }

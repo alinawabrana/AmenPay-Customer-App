@@ -10,7 +10,7 @@ import 'package:palmpay/widgets/payment_method_card.dart';
 import 'package:palmpay/features/payment_methods/providers/payment_methods_refresh_provider.dart';
 
 import '../../authentication/models/profile/user_model.dart';
-import '../../home/models/QR Code/payment_method_model.dart';
+import '../models/nfc_payment_method_status_model.dart';
 
 class PaymentMethodsScreen extends ConsumerStatefulWidget {
   const PaymentMethodsScreen({super.key});
@@ -38,7 +38,7 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
   Future<_PaymentMethodsData> _load() async {
     final results = await Future.wait([
       ApiService.getUserDetails(),
-      ApiService.getPaymentMethods(),
+      ApiService.getPaymentMethodsWithStatus(),
       ApiService.getUserCards(),
       ApiService.getPalmEnrollMeStatus(),
     ]);
@@ -48,59 +48,65 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
     final userCardsJson = results[2] as Map<String, dynamic>;
     final palmEnrollJson = results[3] as Map<String, dynamic>;
 
-    final paymentResponse = PaymentMethodsResponse.fromJson(paymentMethodsJson);
+    final methodsRaw = paymentMethodsJson['payment_methods'];
+    final methods = methodsRaw is List
+        ? methodsRaw
+              .whereType<Map<String, dynamic>>()
+              .map(NfcPaymentMethodStatus.fromJson)
+              .toList()
+        : <NfcPaymentMethodStatus>[];
 
-    final methods = paymentResponse.paymentMethods;
+    final nfcBadge = _deriveNfcBadge(methods);
 
-    bool isNfcActive = false;
-    if (methods.isNotEmpty) {
-      final statuses = <bool>[];
-      await Future.wait(
-        methods.map((m) async {
-          try {
-            final res = await ApiService.getNfcStatus(paymentMethodId: m.id);
-            final dynamic inner = res['data'];
-            final Map<String, dynamic>? dataMap = inner is Map<String, dynamic>
-                ? inner
-                : null;
-
-            dynamic v = res['NFC_status'] ?? res['nfc_status'];
-            v ??= dataMap?['NFC_status'] ?? dataMap?['nfc_status'];
-
-            // NOTE: Do NOT fall back to res['status'] here; many APIs use that
-            // for request status (e.g., "success"), which would incorrectly
-            // mark NFC as active.
-            bool parsed = false;
-            if (v is bool) parsed = v;
-            if (v is num) parsed = v != 0;
-            if (v is String) {
-              final s = v.toLowerCase().trim();
-              parsed =
-                  s == '1' || s == 'true' || s == 'active' || s == 'enabled';
-            }
-            statuses.add(parsed);
-          } catch (_) {
-            statuses.add(false);
-          }
-        }),
-      );
-      isNfcActive = statuses.any((e) => e);
-    }
-
-    final isPalmEnrolled = _parseIsPalmEnrolled(palmEnrollJson, userCardsJson);
+    final isPalmEnrolled = _parseIsPalmEnrolled(
+      methods,
+      palmEnrollJson,
+      userCardsJson,
+    );
 
     return _PaymentMethodsData(
       user: user,
-      firstPaymentMethod: methods.isNotEmpty ? methods.first : null,
-      isNfcActive: isNfcActive,
+      nfcBadge: nfcBadge,
       isPalmEnrolled: isPalmEnrolled,
     );
   }
 
+  _NfcBadgeState _deriveNfcBadge(List<NfcPaymentMethodStatus> methods) {
+    if (methods.any((m) => m.isNfcActive)) return _NfcBadgeState.active;
+    if (methods.any((m) => m.isNfcEnrolledKnown)) {
+      return _NfcBadgeState.inactive;
+    }
+    return _NfcBadgeState.notEnrolled;
+  }
+
   bool _parseIsPalmEnrolled(
+    List<NfcPaymentMethodStatus> methods,
     Map<String, dynamic> palmEnrollJson,
     Map<String, dynamic> userCardsJson,
   ) {
+    if (methods.any((m) => m.palmEnrolled)) {
+      return true;
+    }
+
+    final palmData = palmEnrollJson['data'] is Map<String, dynamic>
+        ? (palmEnrollJson['data'] as Map<String, dynamic>)
+        : palmEnrollJson;
+
+    final enrolledList = palmData['enrolled_methods'] ??
+        palmData['enrolled_payment_methods'] ??
+        palmData['enrolled_ids'];
+    if (enrolledList is List && enrolledList.isNotEmpty) {
+      return true;
+    }
+    if (enrolledList is Map && enrolledList.isNotEmpty) {
+      return true;
+    }
+
+    final enrolledCount = palmData['enrolled_count'];
+    if (enrolledCount is num && enrolledCount > 0) {
+      return true;
+    }
+
     final candidates = [
       palmEnrollJson['is_enrolled'],
       palmEnrollJson['palm_vein_enrolled'],
@@ -204,12 +210,16 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
                     icon: Icons.credit_card,
                     iconColor: const Color(0xFF238EC2),
                     iconBackgroundColor: const Color(0xFFEFF6FF),
-                    badgeText: data.isNfcActive
-                        ? l10n.t('active')
-                        : l10n.t('inactive'),
-                    badgeColor: data.isNfcActive
-                        ? const Color(0xFF238EC2)
-                        : const Color(0xFF9CA3AF),
+                    badgeText: switch (data.nfcBadge) {
+                      _NfcBadgeState.active => l10n.t('active'),
+                      _NfcBadgeState.inactive => l10n.t('inactive'),
+                      _NfcBadgeState.notEnrolled => l10n.t('not_enrolled'),
+                    },
+                    badgeColor: switch (data.nfcBadge) {
+                      _NfcBadgeState.active => const Color(0xFF238EC2),
+                      _NfcBadgeState.inactive => const Color(0xFF9CA3AF),
+                      _NfcBadgeState.notEnrolled => const Color(0xFF9CA3AF),
+                    },
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -240,14 +250,14 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
 
 class _PaymentMethodsData {
   final UserModel user;
-  final PaymentMethod? firstPaymentMethod;
-  final bool isNfcActive;
+  final _NfcBadgeState nfcBadge;
   final bool isPalmEnrolled;
 
   const _PaymentMethodsData({
     required this.user,
-    required this.firstPaymentMethod,
-    required this.isNfcActive,
+    required this.nfcBadge,
     required this.isPalmEnrolled,
   });
 }
+
+enum _NfcBadgeState { active, inactive, notEnrolled }

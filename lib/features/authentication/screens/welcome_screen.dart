@@ -109,7 +109,7 @@ class WelcomeScreen extends ConsumerWidget {
                           onPressed: () {
                             welcomeNotifier.navigateToSignIn(context);
                           },
-                          child: const Text('Sign In'),
+                          child: Text(l10n.t('sign_in')),
                         ),
                       ),
 
@@ -123,7 +123,7 @@ class WelcomeScreen extends ConsumerWidget {
                           onPressed: () {
                             welcomeNotifier.navigateToCreateAccount(context);
                           },
-                          child: const Text('Create Account'),
+                          child: Text(l10n.t('create_account')),
                         ),
                       ),
                     ],

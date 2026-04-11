@@ -137,11 +137,23 @@ class AppLocalizations {
       'recent_transactions': 'Recent Transaction',
       'see_all': 'See All',
       'logout': 'Logout',
+      'secure_card_tokenized_message':
+          'Your card will be securely tokenized for your protection',
+      'security_note_card_tokens':
+          'Your card number is never stored. Only secure tokens.',
+      'card_preview_name_placeholder': 'YOUR NAME',
+      'cardholder_name_hint': 'John Doe',
+      'expiry_placeholder': 'MM/YY',
+      'unsupported_invalid_card_type': 'Unsupported or invalid card type',
       'cancel': 'Cancel',
       'are_you_sure_logout': 'Are you sure you want to logout?',
       'language': 'Language',
       'arabic': 'Arabic',
       'english': 'English',
+      'nav_home': 'Home',
+      'nav_analytics': 'Analytics',
+      'nav_card': 'Card',
+      'nav_settings': 'Settings',
       'payment_method_section_title': 'Payment Method',
       'cardholder_name_label': 'Cardholder Name',
       'expires_label': 'Expires',
@@ -149,6 +161,20 @@ class AppLocalizations {
       'card_number': 'Card Number',
       'expiry_date': 'Expiry Date',
       'cvv': 'CVV',
+      'subject': 'Subject',
+      'message': 'Message',
+      'forgot_password_title': 'Forgot Password?',
+      'forgot_password_subtitle': 'Answer your security questions',
+      'registered_email': 'Registered Email',
+      'security_question_1': 'What is your primary school name?',
+      'security_question_2': 'What is your favorite subject?',
+      'your_answer': 'Your answer',
+      'security_answer_required': 'This answer is required',
+      'verify_reset_password': 'Verify & Reset Password',
+      'reset_password_title': 'Reset Password',
+      'reset_password_subtitle': 'Set your new password securely',
+      'password_reset_success': 'Password has been reset successfully.',
+      'submit': 'Submit',
       'required': 'Required',
       'invalid': 'Invalid',
       'invalid_format': 'Invalid format',
@@ -170,10 +196,143 @@ class AppLocalizations {
       'share': 'Share',
       'qr_code_active': 'QR Code Active',
       'qr_code_active_subtitle': 'Valid for payments • Last updated today',
+      'default_label': 'Default',
+      'set_as_default': 'Set as Default',
+      'remove_default': 'Remove Default',
+      'default_payment_method_updated': 'Default payment method updated',
       'add_payment_method': 'Add Payment Method',
       'select_a_card': 'Select a card',
       'active_status': 'Active',
       'inactive_status': 'Inactive',
+      'analytics_title': 'Analytics',
+      'analytics_subtitle':
+          'Payment activity, enrollment readiness, and usage trends for {name}.',
+      'analytics_payment_activity': 'Payment Activity',
+      'analytics_status_mix': 'Status Mix',
+      'analytics_method_readiness': 'Method Readiness',
+      'analytics_live_backend_enrollment': 'Live backend enrollment state',
+      'analytics_volume_snapshot': 'Volume Snapshot',
+      'analytics_no_payment_activity': 'No payment activity in this range',
+      'analytics_transaction_volume_range':
+          'Transaction volume across the selected range',
+      'analytics_no_statuses': 'No statuses available in this range',
+      'analytics_completed_vs_pending_failed':
+          'Completed vs pending vs failed',
+      'analytics_no_daily_totals': 'No daily totals available',
+      'analytics_daily_totals_range': 'Daily totals for the selected range',
+      'analytics_no_data_selected_range': 'No data in selected range',
+      'analytics_switch_filter': 'Switch the filter to inspect another period.',
+      'analytics_transactions_in_window':
+          '{count} transactions captured in this window.',
+      'analytics_processed': 'Processed',
+      'analytics_success_rate': 'Success Rate',
+      'analytics_nfc_active': 'NFC Active',
+      'analytics_palm_ready': 'Palm Ready',
+      'analytics_qr_enabled_methods': '{count} QR-enabled methods',
+      'analytics_seven_days': '7 Days',
+      'analytics_thirty_days': '30 Days',
+      'analytics_all_time': 'All Time',
+      'analytics_no_transaction_data': 'No transaction data yet',
+      'analytics_pending': 'Pending',
+      'analytics_success': 'Success',
+      'analytics_failed': 'Failed',
+      'analytics_palm_vein_label': 'Palm Vein',
+      'analytics_nfc_card_label': 'NFC Card',
+      'analytics_qr_code_label': 'QR Code',
+      'analytics_successful_or_initiated':
+          '{count} successful or initiated payments',
+      'analytics_initiated_counted_success':
+          'Initiated is counted as success',
+      'analytics_palm_enrolled_value': 'Enrolled',
+      'analytics_palm_not_enrolled_value': 'Not enrolled',
+      'analytics_nfc_active_value': '{count} active',
+      'analytics_qr_ready_value': '{count} ready',
+      'notifications_none': 'No notifications yet',
+      'notifications_today': 'Today',
+      'notifications_yesterday': 'Yesterday',
+      'notifications_earlier': 'Earlier',
+      'notifications_live_count': 'Live count fetched from backend.',
+      'notifications_unread_count_one': '1 unread notification',
+      'notifications_unread_count_other': '{count} unread notifications',
+      'about_amenpay_user_app': 'AmenPay User App',
+      'about_hero_subtitle':
+          'AmenPay is a two-app payment platform. This app is the user-facing side of the ecosystem.',
+      'about_what_amenpay_title': 'What AmenPay Does',
+      'about_what_amenpay_body':
+          'AmenPay enables secure payment experiences between customers and cashiers. The platform supports digital payment access, enrollment flows, and transaction processing using multiple payment methods.',
+      'about_two_app_title': 'Two-App Platform',
+      'about_two_app_body':
+          'AmenPay operates with two connected applications. The current app is the User App, designed for customers to manage cards, QR codes, payment methods, transaction history, and account settings. The Cashier App is used on the cashier or merchant side to handle enrollments, payment execution, and assisted payment flows.',
+      'about_supported_methods_title': 'Supported Payment Methods',
+      'about_supported_methods_body':
+          'The AmenPay platform supports three payment methods: QR code scanning, palm vein scanning, and NFC card scanning. The cashier-side app handles payment collection and enrollment flows, while the user-side app keeps the customer informed and in control of their enrolled methods.',
+      'about_user_role_title': 'Role of This User App',
+      'about_user_role_body':
+          'This app lets users review their active payment methods, enroll supported methods, generate and save QR codes, track transaction activity, receive notifications, and manage account information securely.',
+      'terms_use_app_title': 'Use of the App',
+      'terms_use_app_body':
+          'AmenPay User App is intended for authorized customers who want to manage payment methods and review payment activity. By using the app, the user agrees to provide accurate information and to use the platform only for lawful payment and account-management purposes.',
+      'terms_payments_title': 'Payments and Transactions',
+      'terms_payments_body':
+          'The app displays transaction records and payment method states, while actual assisted payment processing may be completed through the AmenPay cashier-side application. Users are responsible for reviewing transaction details and reporting unauthorized activity immediately.',
+      'terms_card_data_title': 'Card and Enrollment Data',
+      'terms_card_data_body':
+          'AmenPay may handle masked card details, payment-method identifiers, QR payloads, NFC enrollment information, and palm-related enrollment references to enable secure payments. Sensitive values should be stored, transmitted, and processed securely, and users should avoid sharing their credentials or device access with others.',
+      'terms_privacy_security_title': 'Privacy and Security',
+      'terms_privacy_security_body':
+          'AmenPay is expected to use customer information only for account management, payment enablement, security operations, and support workflows. This may include profile information, payment method status, transaction history, and enrollment state. Users should protect their device and notify support if they suspect unauthorized access.',
+      'terms_support_compliance_title': 'Support and Compliance',
+      'terms_support_compliance_body':
+          'Users may contact AmenPay support for help with account issues, payment disputes, enrollment problems, or data-related questions. Continued use of the app means the user accepts the platform rules, privacy handling practices, and operational safeguards necessary to deliver payment services.',
+      'contact_intro':
+          'Send your message directly through your mail app. Fill in the details below and AmenPay support will be contacted using mailto.',
+      'contact_no_mail_app': 'No mail app was found on this device.',
+      'contact_subject_required': 'Subject is required',
+      'contact_message_required': 'Message is required',
+      'contact_send_message': 'Send Message',
+      'nfc_enroll_title': 'Enroll NFC',
+      'nfc_step_qr': 'QR',
+      'nfc_step_scan': 'Scan',
+      'nfc_scan_qr_pos':
+          'Scan this QR on the POS to start NFC card enrollment',
+      'nfc_pos_claims_session':
+          'The POS device will claim this session first. After that, tap the physical NFC card on the POS reader to complete enrollment.',
+      'nfc_step1_pos_scan': 'Step 1: Let the POS scan this QR code.',
+      'nfc_step2_keep_card':
+          'Step 2: Once claimed, keep the NFC card near the POS reader.',
+      'nfc_i_scanned_qr': "I've Scanned the NFC QR",
+      'nfc_scanning_card': 'Scanning NFC Card',
+      'nfc_waiting_for_pos': 'Waiting for POS Device',
+      'nfc_pos_claimed_waiting_scan':
+          'POS claimed the session. Waiting for card scan...',
+      'nfc_waiting_pos_claim':
+          'Waiting for POS device to claim this session...',
+      'nfc_keep_card_steady':
+          'Keep the NFC card steady near the reader until the POS completes the scan.',
+      'nfc_operator_scan_qr':
+          'The POS operator needs to scan the QR first before the card can be tapped.',
+      'nfc_status_label': 'NFC Status',
+      'payment_method_id_label': 'Payment Method ID',
+      'saving': 'Saving...',
+      'saved_to': 'Saved to {location}',
+      'failed_to_save_pdf': 'Failed to save PDF: {error}',
+      'palm_pay_qr_code_title': 'PalmPay QR Code',
+      'card_holder_label': 'Card Holder',
+      'user_label': 'User',
+      'email_label': 'Email',
+      'regenerate_qr_code': 'Regenerate QR Code',
+      'generating_qr_code_session': 'Generating QR code session...',
+      'waiting_qr_scan_result': 'Waiting for the QR code scan result.',
+      'missing_payment_method': 'Missing payment method',
+      'invalid_enrollment_session_response':
+          'Invalid enrollment session response',
+      'palm_scan_in_progress':
+          'Palm vein scan in progress. Waiting for the scanner result.',
+      'waiting_palm_scanner':
+          'Waiting for the palm vein scanner to start enrollment.',
+      'qr_code_scan_failed': 'QR code scan failed',
+      'qr_code_scan_failed_regenerate':
+          'QR code scan failed. Please regenerate the QR code.',
     },
     'ar': {
       'app_name': 'أمين باي',
@@ -274,6 +433,10 @@ class AppLocalizations {
       'enter_your_password': 'أدخل كلمة المرور',
       'please_enter_password': 'يرجى إدخال كلمة المرور',
       'password_min_length': 'يجب أن تكون كلمة المرور 8 أحرف على الأقل',
+      'nav_home': 'الرئيسية',
+      'nav_analytics': 'التحليلات',
+      'nav_card': 'البطاقة',
+      'nav_settings': 'الإعدادات',
       'payment_method_section_title': 'طرق الدفع',
       'cardholder_name_label': 'اسم حامل البطاقة',
       'expires_label': 'تنتهي',
@@ -281,6 +444,20 @@ class AppLocalizations {
       'card_number': 'رقم البطاقة',
       'expiry_date': 'تاريخ الانتهاء',
       'cvv': 'رمز الأمان',
+      'subject': 'الموضوع',
+      'message': 'الرسالة',
+      'forgot_password_title': 'هل نسيت كلمة المرور؟',
+      'forgot_password_subtitle': 'أجب عن أسئلة الأمان',
+      'registered_email': 'البريد الإلكتروني المسجل',
+      'security_question_1': 'ما اسم مدرستك الابتدائية؟',
+      'security_question_2': 'ما هي مادتك المفضلة؟',
+      'your_answer': 'إجابتك',
+      'security_answer_required': 'هذه الإجابة مطلوبة',
+      'verify_reset_password': 'تحقق وأعد تعيين كلمة المرور',
+      'reset_password_title': 'إعادة تعيين كلمة المرور',
+      'reset_password_subtitle': 'قم بتعيين كلمة المرور الجديدة بأمان',
+      'password_reset_success': 'تمت إعادة تعيين كلمة المرور بنجاح.',
+      'submit': 'إرسال',
       'required': 'مطلوب',
       'invalid': 'غير صالح',
       'invalid_format': 'صيغة غير صحيحة',
@@ -302,6 +479,10 @@ class AppLocalizations {
       'share': 'مشاركة',
       'qr_code_active': 'رمز QR نشط',
       'qr_code_active_subtitle': 'صالح للمدفوعات • آخر تحديث اليوم',
+      'default_label': 'الافتراضي',
+      'set_as_default': 'تعيين كافتراضي',
+      'remove_default': 'إزالة الافتراضي',
+      'default_payment_method_updated': 'تم تحديث وسيلة الدفع الافتراضية',
       'add_payment_method': 'إضافة طريقة دفع',
       'select_a_card': 'اختر بطاقة',
       'active_status': 'نشط',
@@ -314,11 +495,150 @@ class AppLocalizations {
       'history': 'السجل',
       'recent_transactions': 'آخر المعاملات',
       'see_all': 'عرض الكل',
+      'logout': 'تسجيل الخروج',
+      'secure_card_tokenized_message':
+          'سيتم تحويل بطاقتك إلى رمز آمن لحمايتك',
+      'security_note_card_tokens':
+          'لن يتم حفظ رقم بطاقتك أبدًا. يتم الاحتفاظ فقط برموز آمنة.',
+      'card_preview_name_placeholder': 'اسمك',
+      'cardholder_name_hint': 'اسمك الكامل',
+      'expiry_placeholder': 'MM/YY',
+      'unsupported_invalid_card_type': 'نوع البطاقة غير صالح أو غير مدعوم',
       'are_you_sure_logout': 'هل أنت متأكد أنك تريد تسجيل الخروج؟',
       'language': 'اللغة',
       'arabic': 'العربية',
       'english': 'الإنجليزية',
       'secure_vein_payment': 'دفع وريد الكف الآمن',
+      'analytics_title': 'التحليلات',
+      'analytics_subtitle':
+          'نشاط المدفوعات وجاهزية التسجيل واتجاهات الاستخدام لـ {name}.',
+      'analytics_payment_activity': 'نشاط المدفوعات',
+      'analytics_status_mix': 'توزيع الحالات',
+      'analytics_method_readiness': 'جاهزية وسائل الدفع',
+      'analytics_live_backend_enrollment': 'حالة التسجيل المباشرة من الخادم',
+      'analytics_volume_snapshot': 'ملخص الأحجام',
+      'analytics_no_payment_activity': 'لا يوجد نشاط مدفوعات في هذه الفترة',
+      'analytics_transaction_volume_range':
+          'حجم المعاملات عبر الفترة المحددة',
+      'analytics_no_statuses': 'لا توجد حالات متاحة في هذه الفترة',
+      'analytics_completed_vs_pending_failed':
+          'مكتملة مقابل معلقة مقابل فاشلة',
+      'analytics_no_daily_totals': 'لا توجد إجماليات يومية متاحة',
+      'analytics_daily_totals_range':
+          'الإجماليات اليومية للفترة المحددة',
+      'analytics_no_data_selected_range': 'لا توجد بيانات في الفترة المحددة',
+      'analytics_switch_filter': 'قم بتغيير الفلتر لاستعراض فترة أخرى.',
+      'analytics_transactions_in_window':
+          'تم التقاط {count} معاملات ضمن هذه الفترة.',
+      'analytics_processed': 'المعالج',
+      'analytics_success_rate': 'معدل النجاح',
+      'analytics_nfc_active': 'NFC النشط',
+      'analytics_palm_ready': 'جاهزية الكف',
+      'analytics_qr_enabled_methods': '{count} وسائل دفع برمز QR',
+      'analytics_seven_days': '7 أيام',
+      'analytics_thirty_days': '30 يومًا',
+      'analytics_all_time': 'كل الوقت',
+      'analytics_no_transaction_data': 'لا توجد بيانات معاملات بعد',
+      'analytics_pending': 'معلق',
+      'analytics_success': 'نجاح',
+      'analytics_failed': 'فاشل',
+      'analytics_palm_vein_label': 'وريد الكف',
+      'analytics_nfc_card_label': 'بطاقة NFC',
+      'analytics_qr_code_label': 'رمز QR',
+      'analytics_successful_or_initiated':
+          '{count} مدفوعات ناجحة أو مبدوءة',
+      'analytics_initiated_counted_success':
+          'يتم احتساب الحالة initiated على أنها نجاح',
+      'analytics_palm_enrolled_value': 'مُسجَّل',
+      'analytics_palm_not_enrolled_value': 'غير مُسجَّل',
+      'analytics_nfc_active_value': '{count} نشط',
+      'analytics_qr_ready_value': '{count} جاهز',
+      'notifications_none': 'لا توجد إشعارات بعد',
+      'notifications_today': 'اليوم',
+      'notifications_yesterday': 'أمس',
+      'notifications_earlier': 'الأقدم',
+      'notifications_live_count': 'تم جلب العدد المباشر من الخادم.',
+      'notifications_unread_count_one': 'إشعار واحد غير مقروء',
+      'notifications_unread_count_other': '{count} إشعارات غير مقروءة',
+      'about_amenpay_user_app': 'تطبيق أمين باي للمستخدم',
+      'about_hero_subtitle':
+          'أمين باي منصة دفع مكوّنة من تطبيقين. هذا التطبيق هو الواجهة المخصصة للمستخدم.',
+      'about_what_amenpay_title': 'ما الذي يقدمه أمين باي',
+      'about_what_amenpay_body':
+          'يوفر أمين باي تجارب دفع آمنة بين العملاء والكاشير. تدعم المنصة الوصول الرقمي إلى المدفوعات وعمليات التسجيل ومعالجة المعاملات باستخدام وسائل دفع متعددة.',
+      'about_two_app_title': 'منصة بتطبيقين',
+      'about_two_app_body':
+          'يعمل أمين باي من خلال تطبيقين مترابطين. التطبيق الحالي هو تطبيق المستخدم والمخصص لإدارة البطاقات وأكواد QR ووسائل الدفع وسجل المعاملات وإعدادات الحساب. أما تطبيق الكاشير فيُستخدم من جهة التاجر أو الكاشير للتعامل مع التسجيلات وتنفيذ المدفوعات ومسارات الدفع المساعدة.',
+      'about_supported_methods_title': 'وسائل الدفع المدعومة',
+      'about_supported_methods_body':
+          'تدعم منصة أمين باي ثلاث وسائل دفع: مسح رمز QR ومسح وريد الكف ومسح بطاقة NFC. يتولى تطبيق الكاشير عمليات التحصيل والتسجيل، بينما يبقي تطبيق المستخدم العميل مطلعًا ومتحكمًا في وسائل الدفع المسجلة لديه.',
+      'about_user_role_title': 'دور تطبيق المستخدم',
+      'about_user_role_body':
+          'يتيح هذا التطبيق للمستخدمين مراجعة وسائل الدفع النشطة لديهم وتسجيل الوسائل المدعومة وإنشاء وحفظ أكواد QR وتتبع نشاط المعاملات واستقبال الإشعارات وإدارة معلومات الحساب بأمان.',
+      'terms_use_app_title': 'استخدام التطبيق',
+      'terms_use_app_body':
+          'تم تصميم تطبيق أمين باي للمستخدمين المصرح لهم الذين يرغبون في إدارة وسائل الدفع ومراجعة نشاط المدفوعات. وباستخدام التطبيق، يوافق المستخدم على تقديم معلومات دقيقة واستخدام المنصة فقط لأغراض الدفع وإدارة الحساب بشكل قانوني.',
+      'terms_payments_title': 'المدفوعات والمعاملات',
+      'terms_payments_body':
+          'يعرض التطبيق سجلات المعاملات وحالات وسائل الدفع، بينما قد تتم معالجة المدفوعات المساعدة فعليًا عبر تطبيق أمين باي الخاص بالكاشير. ويتحمل المستخدم مسؤولية مراجعة تفاصيل المعاملات والإبلاغ فورًا عن أي نشاط غير مصرح به.',
+      'terms_card_data_title': 'بيانات البطاقات والتسجيل',
+      'terms_card_data_body':
+          'قد يتعامل أمين باي مع بيانات بطاقات مقنّعة ومعرّفات وسائل الدفع وحمولات QR ومعلومات تسجيل NFC ومراجع تسجيل وريد الكف لتمكين المدفوعات الآمنة. يجب تخزين القيم الحساسة ونقلها ومعالجتها بشكل آمن، وعلى المستخدمين تجنب مشاركة بيانات اعتمادهم أو الوصول إلى أجهزتهم مع الآخرين.',
+      'terms_privacy_security_title': 'الخصوصية والأمان',
+      'terms_privacy_security_body':
+          'من المتوقع أن يستخدم أمين باي معلومات العملاء فقط لإدارة الحساب وتمكين المدفوعات والعمليات الأمنية ومسارات الدعم. وقد يشمل ذلك معلومات الملف الشخصي وحالة وسائل الدفع وسجل المعاملات وحالة التسجيل. يجب على المستخدمين حماية أجهزتهم وإبلاغ الدعم إذا اشتبهوا في وصول غير مصرح به.',
+      'terms_support_compliance_title': 'الدعم والامتثال',
+      'terms_support_compliance_body':
+          'يمكن للمستخدمين التواصل مع دعم أمين باي للحصول على المساعدة بشأن مشكلات الحساب أو نزاعات الدفع أو مشاكل التسجيل أو الأسئلة المتعلقة بالبيانات. ويعني استمرار استخدام التطبيق أن المستخدم يقبل قواعد المنصة وممارسات الخصوصية والضوابط التشغيلية اللازمة لتقديم خدمات الدفع.',
+      'contact_intro':
+          'أرسل رسالتك مباشرة عبر تطبيق البريد على جهازك. املأ التفاصيل أدناه وسيتم التواصل مع دعم أمين باي باستخدام mailto.',
+      'contact_no_mail_app': 'لم يتم العثور على تطبيق بريد على هذا الجهاز.',
+      'contact_subject_required': 'الموضوع مطلوب',
+      'contact_message_required': 'الرسالة مطلوبة',
+      'contact_send_message': 'إرسال الرسالة',
+      'nfc_enroll_title': 'تسجيل NFC',
+      'nfc_step_qr': 'QR',
+      'nfc_step_scan': 'المسح',
+      'nfc_scan_qr_pos':
+          'امسح رمز QR هذا على جهاز نقطة البيع لبدء تسجيل بطاقة NFC',
+      'nfc_pos_claims_session':
+          'سيقوم جهاز نقطة البيع بحجز هذه الجلسة أولًا. بعد ذلك، قرّب بطاقة NFC الفعلية من قارئ نقطة البيع لإكمال التسجيل.',
+      'nfc_step1_pos_scan': 'الخطوة 1: دع جهاز نقطة البيع يمسح رمز QR هذا.',
+      'nfc_step2_keep_card':
+          'الخطوة 2: بعد حجز الجلسة، أبقِ بطاقة NFC قرب قارئ نقطة البيع.',
+      'nfc_i_scanned_qr': 'لقد قمت بمسح رمز NFC QR',
+      'nfc_scanning_card': 'جارٍ مسح بطاقة NFC',
+      'nfc_waiting_for_pos': 'بانتظار جهاز نقطة البيع',
+      'nfc_pos_claimed_waiting_scan':
+          'تم حجز الجلسة بواسطة نقطة البيع. بانتظار مسح البطاقة...',
+      'nfc_waiting_pos_claim':
+          'بانتظار أن يقوم جهاز نقطة البيع بحجز هذه الجلسة...',
+      'nfc_keep_card_steady':
+          'أبقِ بطاقة NFC ثابتة قرب القارئ حتى يُكمل جهاز نقطة البيع عملية المسح.',
+      'nfc_operator_scan_qr':
+          'يحتاج موظف نقطة البيع إلى مسح رمز QR أولًا قبل تمرير البطاقة.',
+      'nfc_status_label': 'حالة NFC',
+      'payment_method_id_label': 'معرّف وسيلة الدفع',
+      'saving': 'جارٍ الحفظ...',
+      'saved_to': 'تم الحفظ في {location}',
+      'failed_to_save_pdf': 'فشل حفظ ملف PDF: {error}',
+      'palm_pay_qr_code_title': 'رمز PalmPay QR',
+      'card_holder_label': 'حامل البطاقة',
+      'user_label': 'المستخدم',
+      'email_label': 'البريد الإلكتروني',
+      'regenerate_qr_code': 'إعادة إنشاء رمز QR',
+      'generating_qr_code_session': 'جارٍ إنشاء جلسة رمز QR...',
+      'waiting_qr_scan_result': 'بانتظار نتيجة مسح رمز QR.',
+      'missing_payment_method': 'وسيلة الدفع مفقودة',
+      'invalid_enrollment_session_response':
+          'استجابة جلسة التسجيل غير صالحة',
+      'palm_scan_in_progress':
+          'مسح وريد الكف قيد التنفيذ. بانتظار نتيجة الماسح.',
+      'waiting_palm_scanner':
+          'بانتظار أن يبدأ ماسح وريد الكف عملية التسجيل.',
+      'qr_code_scan_failed': 'فشل مسح رمز QR',
+      'qr_code_scan_failed_regenerate':
+          'فشل مسح رمز QR. يرجى إعادة إنشاء رمز QR.',
     },
   };
 
@@ -328,6 +648,14 @@ class AppLocalizations {
     final en = _localizedValues['en'];
     if (en != null && en.containsKey(key)) return en[key]!;
     return key;
+  }
+
+  String tf(String key, Map<String, String> params) {
+    var value = t(key);
+    params.forEach((k, v) {
+      value = value.replaceAll('{$k}', v);
+    });
+    return value;
   }
 }
 

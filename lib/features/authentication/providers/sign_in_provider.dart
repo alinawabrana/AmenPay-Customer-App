@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:palmpay/app_routes.dart';
 import 'package:palmpay/l10n/app_localizations.dart';
 import 'package:palmpay/services/api_service.dart';
+import 'package:palmpay/services/storage_service.dart';
 
 /// Provider for sign in form state management
 final signInProvider = StateNotifierProvider<SignInNotifier, SignInState>(
@@ -41,6 +42,17 @@ class SignInState {
 class SignInNotifier extends StateNotifier<SignInState> {
   SignInNotifier() : super(SignInState());
 
+  Future<void> loadRememberedCredentials() async {
+    final saved = await StorageService.getRememberedCredentials();
+    if (saved == null) return;
+
+    state = state.copyWith(
+      email: saved['email'] ?? '',
+      password: saved['password'] ?? '',
+      rememberMe: true,
+    );
+  }
+
   void updateEmail(String value) {
     state = state.copyWith(email: value);
   }
@@ -68,6 +80,15 @@ class SignInNotifier extends StateNotifier<SignInState> {
 
       // Call login API
       await ApiService.login(email: state.email, password: state.password);
+
+      if (state.rememberMe) {
+        await StorageService.saveRememberedCredentials(
+          email: state.email,
+          password: state.password,
+        );
+      } else {
+        await StorageService.clearRememberedCredentials();
+      }
 
       // Close loading indicator
       if (context.mounted) {

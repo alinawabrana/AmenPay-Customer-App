@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:palmpay/app_routes.dart';
 import 'package:palmpay/features/authentication/providers/sign_in_provider.dart';
 import 'package:palmpay/l10n/app_localizations.dart';
 import 'package:palmpay/widgets/language_chip.dart';
@@ -16,6 +18,19 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() async {
+      final notifier = ref.read(signInProvider.notifier);
+      await notifier.loadRememberedCredentials();
+      final state = ref.read(signInProvider);
+      if (!mounted) return;
+      _emailController.text = state.email;
+      _passwordController.text = state.password;
+    });
+  }
 
   InputDecoration _fieldDecoration({
     required BuildContext context,
@@ -206,25 +221,48 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: TextButton(
-                          onPressed: () {},
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      Row(
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: state.rememberMe,
+                                onChanged: (_) => notifier.toggleRememberMe(),
+                                activeColor: const Color(0xFF1E86B9),
+                              ),
+                              Text(
+                                l10n.t('remember_me'),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF374151),
+                                ),
+                              ),
+                            ],
                           ),
-                          child: Text(
-                            l10n.t('forgot_password'),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF1E86B9),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () =>
+                                context.push(AppRoutes.forgotPasswordPath),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(
+                              l10n.t('forgot_password'),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF1E86B9),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
+                      const SizedBox(height: 8),
                       const SizedBox(height: 14),
                       SizedBox(
                         height: 52,
@@ -251,53 +289,6 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Divider(color: Color(0xFFE5E7EB)),
-                          ),
-                          Padding(
-                            padding: const EdgeInsetsDirectional.symmetric(
-                              horizontal: 12,
-                            ),
-                            child: Text(
-                              l10n.t('or_continue_with'),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFF6B7280),
-                              ),
-                            ),
-                          ),
-                          const Expanded(
-                            child: Divider(color: Color(0xFFE5E7EB)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _SocialIconButton(
-                            icon: Icons.g_mobiledata,
-                            iconColor: const Color(0xFFEA4335),
-                            onTap: () {},
-                          ),
-                          const SizedBox(width: 14),
-                          _SocialIconButton(
-                            icon: Icons.apple,
-                            iconColor: const Color(0xFF111827),
-                            onTap: () {},
-                          ),
-                          const SizedBox(width: 14),
-                          _SocialIconButton(
-                            icon: Icons.facebook,
-                            iconColor: const Color(0xFF1877F2),
-                            onTap: () {},
-                          ),
-                        ],
                       ),
                       const SizedBox(height: 18),
                       Row(
@@ -338,35 +329,6 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SocialIconButton extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final VoidCallback onTap;
-
-  const _SocialIconButton({
-    required this.icon,
-    required this.iconColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: iconColor),
       ),
     );
   }

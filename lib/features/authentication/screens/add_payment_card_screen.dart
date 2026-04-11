@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:palmpay/app_routes.dart';
 import 'package:palmpay/features/authentication/providers/create_account_provider.dart';
+import 'package:palmpay/features/payment_methods/providers/payment_methods_refresh_provider.dart';
 import 'package:palmpay/l10n/app_localizations.dart';
+import 'package:palmpay/services/api_service.dart';
+import 'package:palmpay/utils/card_type_detector.dart';
 import 'package:palmpay/widgets/card_preview.dart';
 import 'package:palmpay/widgets/primary_text_field.dart';
 import 'package:palmpay/widgets/security_banner.dart';
@@ -25,7 +30,7 @@ class _AddPaymentCardScreenState extends ConsumerState<AddPaymentCardScreen> {
 
   String _formattedCardNumber = '•••• •••• •••• ••••';
   String _formattedExpiryDate = 'MM/YY';
-  String _cardholderName = 'YOUR NAME';
+  String _cardholderName = '';
 
   @override
   void initState() {
@@ -70,7 +75,7 @@ class _AddPaymentCardScreenState extends ConsumerState<AddPaymentCardScreen> {
   void _updateCardholderName() {
     setState(() {
       if (_cardholderNameController.text.isEmpty) {
-        _cardholderName = 'YOUR NAME';
+        _cardholderName = '';
       } else {
         _cardholderName = _cardholderNameController.text.toUpperCase();
       }
@@ -101,6 +106,7 @@ class _AddPaymentCardScreenState extends ConsumerState<AddPaymentCardScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final notifier = ref.read(createAccountProvider.notifier);
+    final canPop = Navigator.of(context).canPop();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -116,19 +122,45 @@ class _AddPaymentCardScreenState extends ConsumerState<AddPaymentCardScreen> {
                 Row(
                   children: [
                     SizedBox(
-                      width: 15,
-                      height: 13,
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.arrow_back,
-                          size: 15,
-                          color: const Color(0xFF333333),
-                          textDirection: Directionality.of(context),
-                        ),
-                        onPressed: () => Navigator.of(context).pop(),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
+                      width: canPop ? 15 : 60,
+                      height: 20,
+                      child: canPop
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.arrow_back,
+                                size: 15,
+                                color: const Color(0xFF333333),
+                                textDirection: Directionality.of(context),
+                              ),
+                              onPressed: () => Navigator.of(context).pop(),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            )
+                          : TextButton(
+                              onPressed: () async {
+                                try {
+                                  await ApiService.logout();
+                                } finally {
+                                  if (context.mounted) {
+                                    context.go(AppRoutes.signInPath);
+                                  }
+                                }
+                              },
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size.zero,
+                                tapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text(
+                                l10n.t('logout'),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFB91C1C),
+                                ),
+                              ),
+                            ),
                     ),
                     Expanded(
                       child: Center(
@@ -144,7 +176,7 @@ class _AddPaymentCardScreenState extends ConsumerState<AddPaymentCardScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 15), // Balance the back button
+                    SizedBox(width: canPop ? 15 : 60),
                   ],
                 ),
 
@@ -225,7 +257,7 @@ class _AddPaymentCardScreenState extends ConsumerState<AddPaymentCardScreen> {
                       flex: 2,
                       child: PrimaryTextField(
                         label: l10n.t('expiry_date'),
-                        hintText: 'MM/YY',
+                        hintText: l10n.t('expiry_placeholder'),
                         controller: _expiryDateController,
                         keyboardType: TextInputType.number,
                         maxLength: 5,
@@ -314,7 +346,7 @@ class _AddPaymentCardScreenState extends ConsumerState<AddPaymentCardScreen> {
                 // Cardholder Name field
                 PrimaryTextField(
                   label: l10n.t('cardholder_name_label'),
-                  hintText: 'John Doe',
+                  hintText: l10n.t('cardholder_name_hint'),
                   controller: _cardholderNameController,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -345,6 +377,22 @@ class _AddPaymentCardScreenState extends ConsumerState<AddPaymentCardScreen> {
                         final expiryDate = _expiryDateController.text;
                         final cvv = _cvvController.text;
                         final cardholderName = _cardholderNameController.text;
+                        final detectedType = CardTypeDetector.detectCardType(
+                          cardNumber,
+                        );
+                        final cardType = CardTypeDetector.getCardTypeName(
+                          detectedType,
+                        );
+
+                        if (cardType.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l10n.t('unsupported_invalid_card_type')),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
 
                         notifier.addCard(
                           context,
@@ -352,6 +400,12 @@ class _AddPaymentCardScreenState extends ConsumerState<AddPaymentCardScreen> {
                           expiryDate: expiryDate,
                           cvv: cvv,
                           cardholderName: cardholderName,
+                          cardType: cardType,
+                          onSuccess: () {
+                            ref
+                                .read(paymentMethodsRefreshProvider.notifier)
+                                .state++;
+                          },
                         );
                       }
                     },

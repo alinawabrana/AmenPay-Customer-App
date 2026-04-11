@@ -20,6 +20,8 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _securityAnswer1Controller = TextEditingController();
+  final _securityAnswer2Controller = TextEditingController();
 
   @override
   void dispose() {
@@ -28,6 +30,8 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _securityAnswer1Controller.dispose();
+    _securityAnswer2Controller.dispose();
     super.dispose();
   }
 
@@ -138,6 +142,36 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
                 ),
 
                 // 20px spacing
+                const SizedBox(height: 20),
+
+                CustomTextField(
+                  label: l10n.t('security_question_1'),
+                  hintText: l10n.t('your_answer'),
+                  icon: Icons.school_outlined,
+                  controller: _securityAnswer1Controller,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return l10n.t('security_answer_required');
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 20),
+
+                CustomTextField(
+                  label: l10n.t('security_question_2'),
+                  hintText: l10n.t('your_answer'),
+                  icon: Icons.menu_book_outlined,
+                  controller: _securityAnswer2Controller,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return l10n.t('security_answer_required');
+                    }
+                    return null;
+                  },
+                ),
+
                 const SizedBox(height: 20),
 
                 CustomTextField(
@@ -275,6 +309,12 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
                         notifier.updateFullName(_fullNameController.text);
                         notifier.updateEmail(_emailController.text);
                         notifier.updatePhoneNumber(_phoneController.text);
+                        notifier.updateSecurityAnswer1(
+                          _securityAnswer1Controller.text,
+                        );
+                        notifier.updateSecurityAnswer2(
+                          _securityAnswer2Controller.text,
+                        );
                         notifier.updatePassword(_passwordController.text);
                         notifier.updateConfirmPassword(
                           _confirmPasswordController.text,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:palmpay/l10n/app_localizations.dart';
 
 /// Security banner widget with shield icon and message
 class SecurityBanner extends StatelessWidget {
@@ -6,6 +7,7 @@ class SecurityBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       height: 77.5,
@@ -25,7 +27,7 @@ class SecurityBanner extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              'Your card will be securely tokenized for your protection',
+              l10n.t('secure_card_tokenized_message'),
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,

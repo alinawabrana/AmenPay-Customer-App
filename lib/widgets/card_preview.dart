@@ -11,13 +11,16 @@ class CardPreview extends StatelessWidget {
   const CardPreview({
     super.key,
     this.cardNumber = '•••• •••• •••• ••••',
-    this.cardholderName = 'YOUR NAME',
+    this.cardholderName = '',
     this.expiryDate = 'MM/YY',
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final effectiveCardholderName = cardholderName.isEmpty
+        ? l10n.t('card_preview_name_placeholder')
+        : cardholderName;
     return Container(
       height: 200,
       decoration: BoxDecoration(
@@ -131,7 +134,7 @@ class CardPreview extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    cardholderName,
+                    effectiveCardholderName,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,

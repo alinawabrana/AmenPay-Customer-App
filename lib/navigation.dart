@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:palmpay/app_routes.dart';
+import 'package:palmpay/l10n/app_localizations.dart';
 
 class AppNavigation {
   static final GoRouter router = GoRouter(
@@ -28,6 +29,7 @@ class _TabbedScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final bottomTheme = theme.bottomNavigationBarTheme;
 
@@ -64,7 +66,7 @@ class _TabbedScaffold extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _BottomNavItem(
-                label: 'Home',
+                label: l10n.t('nav_home'),
                 isActive: navigationShell.currentIndex == 0,
                 activeColor: activeColor,
                 inactiveColor: inactiveColor,
@@ -76,7 +78,7 @@ class _TabbedScaffold extends StatelessWidget {
                 onTap: () => _onTap(0),
               ),
               _BottomNavItem(
-                label: 'Analytics',
+                label: l10n.t('nav_analytics'),
                 isActive: navigationShell.currentIndex == 1,
                 activeColor: activeColor,
                 inactiveColor: inactiveColor,
@@ -88,7 +90,7 @@ class _TabbedScaffold extends StatelessWidget {
                 onTap: () => _onTap(1),
               ),
               _BottomNavItem(
-                label: 'Card',
+                label: l10n.t('nav_card'),
                 isActive: navigationShell.currentIndex == 2,
                 activeColor: activeColor,
                 inactiveColor: inactiveColor,
@@ -100,7 +102,7 @@ class _TabbedScaffold extends StatelessWidget {
                 onTap: () => _onTap(2),
               ),
               _BottomNavItem(
-                label: 'Settings',
+                label: l10n.t('nav_settings'),
                 isActive: navigationShell.currentIndex == 3,
                 activeColor: activeColor,
                 inactiveColor: inactiveColor,

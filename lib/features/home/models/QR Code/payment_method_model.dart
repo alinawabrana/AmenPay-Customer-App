@@ -7,6 +7,7 @@ class PaymentMethod {
   final String cardType;
   final String status;
   final DateTime createdAt;
+  final bool isDefault;
 
   /// Optional / legacy fields (not always present in API)
   final int? cardId;
@@ -20,9 +21,36 @@ class PaymentMethod {
     required this.cardType,
     required this.status,
     required this.createdAt,
+    required this.isDefault,
     this.cardId,
     this.qrCode,
   });
+
+  PaymentMethod copyWith({
+    int? id,
+    String? cardHolderName,
+    String? cardNumber,
+    String? expiryDate,
+    String? cardType,
+    String? status,
+    DateTime? createdAt,
+    bool? isDefault,
+    int? cardId,
+    String? qrCode,
+  }) {
+    return PaymentMethod(
+      id: id ?? this.id,
+      cardHolderName: cardHolderName ?? this.cardHolderName,
+      cardNumber: cardNumber ?? this.cardNumber,
+      expiryDate: expiryDate ?? this.expiryDate,
+      cardType: cardType ?? this.cardType,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      isDefault: isDefault ?? this.isDefault,
+      cardId: cardId ?? this.cardId,
+      qrCode: qrCode ?? this.qrCode,
+    );
+  }
 
   factory PaymentMethod.fromJson(Map<String, dynamic> json) {
     final createdAtRaw = json['created_at'] ?? json['createdAt'];
@@ -44,7 +72,18 @@ class PaymentMethod {
       qrCode: (json['qr_code'] ?? json['qrCode']) as String?,
       status: (json['status'] ?? '') as String,
       createdAt: createdAt,
+      isDefault: _parseBool(json['is_default'] ?? json['default']),
     );
+  }
+
+  static bool _parseBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' || normalized == '1' || normalized == 'yes';
+    }
+    return false;
   }
 }
 

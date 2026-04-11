@@ -197,6 +197,8 @@ class ApiService {
     required String phoneNumber,
     required String password,
     required String passwordConfirmation,
+    required String securityAnswer1,
+    required String securityAnswer2,
   }) async {
     try {
       final url = '$baseUrl/signup';
@@ -207,17 +209,24 @@ class ApiService {
         'email': email,
         'phone_number': phoneNumber,
         'password': '******',
+        'security_answer_1': '******',
+        'security_answer_2': '******',
       });
 
       final response = await http.post(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: jsonEncode({
           'fullname': fullName,
           'email': email,
           'phone': phoneNumber,
           'password': password,
           'password_confirmation': passwordConfirmation,
+          'security_answer_1': securityAnswer1,
+          'security_answer_2': securityAnswer2,
         }),
       );
 
@@ -246,6 +255,103 @@ class ApiService {
     }
   }
 
+  /// Forgot Password via security questions
+  /// POST /api/forgot-password
+  static Future<Map<String, dynamic>> forgotPassword({
+    required String email,
+    required String securityAnswer1,
+    required String securityAnswer2,
+  }) async {
+    try {
+      final url = '$baseUrl/forgot-password';
+      final body = {
+        'email': email,
+        'security_answer_1': securityAnswer1,
+        'security_answer_2': securityAnswer2,
+      };
+
+      _log('FORGOT PASSWORD → URL', url);
+      _log('FORGOT PASSWORD → BODY', {
+        'email': email,
+        'security_answer_1': '******',
+        'security_answer_2': '******',
+      });
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      _log('FORGOT PASSWORD → STATUS', response.statusCode);
+      _log('FORGOT PASSWORD → RESPONSE', response.body);
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return responseData;
+      }
+
+      throw Exception(
+        responseData['message'] ?? 'Failed to verify security questions',
+      );
+    } catch (e) {
+      _log('FORGOT PASSWORD → ERROR', e);
+      throw Exception('Forgot password error: $e');
+    }
+  }
+
+  /// Reset Password
+  /// POST /api/reset-password
+  static Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    try {
+      final url = '$baseUrl/reset-password';
+      final body = {
+        'email': email,
+        'token': token,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      };
+
+      _log('RESET PASSWORD → URL', url);
+      _log('RESET PASSWORD → BODY', {
+        'email': email,
+        'token': '******',
+        'password': '******',
+        'password_confirmation': '******',
+      });
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      _log('RESET PASSWORD → STATUS', response.statusCode);
+      _log('RESET PASSWORD → RESPONSE', response.body);
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return responseData;
+      }
+
+      throw Exception(responseData['message'] ?? 'Failed to reset password');
+    } catch (e) {
+      _log('RESET PASSWORD → ERROR', e);
+      throw Exception('Reset password error: $e');
+    }
+  }
+
   /// Check if user has cards
   /// GET /api/account/has-cards
   static Future<Map<String, dynamic>> checkHasCards() async {
@@ -263,6 +369,7 @@ class ApiService {
         Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
@@ -290,6 +397,7 @@ class ApiService {
     required String expiryDate,
     required String cvv,
     required String cardholderName,
+    required String cardType,
   }) async {
     try {
       final token = await StorageService.getAuthToken();
@@ -298,26 +406,42 @@ class ApiService {
       }
 
       final url = '$baseUrl/account/card';
+      final expiryParts = expiryDate.split('/');
+      final rawExpiryMonth = expiryParts.isNotEmpty ? expiryParts[0] : '';
+      final expiryMonth = int.tryParse(rawExpiryMonth);
+      final rawExpiryYear = expiryParts.length > 1 ? expiryParts[1] : '';
+      final normalizedExpiryYear =
+          rawExpiryYear.length == 2 ? '20$rawExpiryYear' : rawExpiryYear;
+      final expiryYear = int.tryParse(normalizedExpiryYear);
 
       _log('ADD CARD → URL', url);
       _log('ADD CARD → BODY', {
         'card_number': '****${cardNumber.substring(cardNumber.length - 4)}',
         'expiry_date': expiryDate,
         'cvv': '***',
+        'expiry_month': expiryMonth ?? rawExpiryMonth,
+        'expiry_year': expiryYear ?? normalizedExpiryYear,
         'card_holder_name': cardholderName,
+        'card_type': cardType,
       });
 
       final response = await http.post(
         Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
           'card_number': cardNumber,
           'expiry_date': expiryDate,
           'cvv': cvv,
+          'card_number_encrypted': cardNumber,
+          'expiry_month': expiryMonth,
+          'expiry_year': expiryYear,
+          'cvv_encrypted': cvv,
           'card_holder_name': cardholderName,
+          'card_type': cardType,
         }),
       );
 
@@ -495,6 +619,36 @@ class ApiService {
     }
   }
 
+  /// Customer Transactions API
+  /// GET /api/reciept/transactions/customer?customer_id={id}
+  static Future<Map<String, dynamic>> getCustomerTransactions({
+    required int customerId,
+  }) async {
+    try {
+      final headers = await _bearerHeaders();
+      final url = '$baseUrl/reciept/transactions/customer?customer_id=$customerId';
+
+      _log('CUSTOMER TRANSACTIONS → URL', url);
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      _log('CUSTOMER TRANSACTIONS → STATUS', response.statusCode);
+      _log('CUSTOMER TRANSACTIONS → RESPONSE', response.body);
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        return responseData;
+      }
+
+      throw Exception(
+        responseData['message'] ?? 'Failed to fetch customer transactions',
+      );
+    } catch (e) {
+      _log('CUSTOMER TRANSACTIONS → ERROR', e);
+      throw Exception('Customer transactions error: $e');
+    }
+  }
+
   /// Profile Image API
   /// GET /api/account/image
   static Future<Map<String, dynamic>> getProfileImage() async {
@@ -625,104 +779,262 @@ class ApiService {
     }
   }
 
-  /// NFC Status API
-  /// GET /api/account/payment-methods/{id}/nfc-status
-  static Future<Map<String, dynamic>> getNfcStatus({
-    required int paymentMethodId,
-  }) async {
+  /// NFC Payment Methods Summary
+  /// GET /api/payment-methods/with-status
+  static Future<Map<String, dynamic>> getPaymentMethodsWithStatus() async {
     try {
-      final token = await StorageService.getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
+      final headers = await _bearerHeaders();
+      final url = '$baseUrl/payment-methods/with-status';
 
-      final url =
-          '$baseUrl/account/payment-methods/$paymentMethodId/nfc-status';
+      _log('NFC METHODS STATUS → URL', url);
 
-      _log('NFC STATUS GET → URL', url);
+      final response = await http.get(Uri.parse(url), headers: headers);
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      _log('NFC STATUS GET → STATUS', response.statusCode);
-      _log('NFC STATUS GET → RESPONSE', response.body);
+      _log('NFC METHODS STATUS → STATUS', response.statusCode);
+      _log('NFC METHODS STATUS → RESPONSE', response.body);
 
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode == 200) {
         return responseData;
       }
 
-      throw Exception(responseData['message'] ?? 'Failed to fetch NFC status');
+      throw Exception(
+        responseData['message'] ?? 'Failed to fetch payment methods status',
+      );
     } catch (e) {
-      _log('NFC STATUS GET → ERROR', e);
-      throw Exception('Get NFC status error: $e');
+      _log('NFC METHODS STATUS → ERROR', e);
+      throw Exception('Payment methods status error: $e');
     }
   }
 
-  /// NFC Status API
-  /// POST /api/account/payment-methods/{id}/nfc-status
-  /// body: {"NFC_status": 0|1}
-  static Future<Map<String, dynamic>> updateNfcStatus({
-    required int paymentMethodId,
-    required bool isEnabled,
-  }) async {
+  /// Notifications
+  /// GET /api/notifications
+  static Future<Map<String, dynamic>> getNotifications() async {
     try {
-      final token = await StorageService.getAuthToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
+      final headers = await _bearerHeaders();
+      final url = '$baseUrl/notifications';
+
+      _log('NOTIFICATIONS → URL', url);
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      _log('NOTIFICATIONS → STATUS', response.statusCode);
+      _log('NOTIFICATIONS → RESPONSE', response.body);
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        return responseData;
       }
 
-      final url =
-          '$baseUrl/account/payment-methods/$paymentMethodId/nfc-status';
-      final body = {'NFC_status': isEnabled ? 'active' : 'inactive'};
+      throw Exception(responseData['message'] ?? 'Failed to fetch notifications');
+    } catch (e) {
+      _log('NOTIFICATIONS → ERROR', e);
+      throw Exception('Notifications error: $e');
+    }
+  }
 
-      _log('NFC STATUS POST → URL', url);
-      _log('NFC STATUS POST → BODY', body);
+  /// Notifications
+  /// GET /api/unread-count
+  static Future<Map<String, dynamic>> getUnreadNotificationsCount() async {
+    try {
+      final headers = await _bearerHeaders();
+      final url = '$baseUrl/unread-count';
+
+      _log('UNREAD COUNT → URL', url);
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      _log('UNREAD COUNT → STATUS', response.statusCode);
+      _log('UNREAD COUNT → RESPONSE', response.body);
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        return responseData;
+      }
+
+      throw Exception(
+        responseData['message'] ?? 'Failed to fetch unread notification count',
+      );
+    } catch (e) {
+      _log('UNREAD COUNT → ERROR', e);
+      throw Exception('Unread count error: $e');
+    }
+  }
+
+  /// Notifications
+  /// POST /api/notifications/{id}/read
+  static Future<Map<String, dynamic>> markNotificationAsRead(int id) async {
+    try {
+      final headers = await _bearerHeaders();
+      final url = '$baseUrl/notifications/$id/read';
+
+      _log('MARK NOTIFICATION READ → URL', url);
 
       final response = await http.post(
         Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(body),
+        headers: headers,
+        body: jsonEncode({}),
       );
 
-      _log('NFC STATUS POST → STATUS', response.statusCode);
-      _log('NFC STATUS POST → RESPONSE', response.body);
+      _log('MARK NOTIFICATION READ → STATUS', response.statusCode);
+      _log('MARK NOTIFICATION READ → RESPONSE', response.body);
 
       final responseData = jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode == 200 || response.statusCode == 201) {
         return responseData;
       }
 
-      throw Exception(responseData['message'] ?? 'Failed to update NFC status');
+      throw Exception(
+        responseData['message'] ?? 'Failed to mark notification as read',
+      );
     } catch (e) {
-      _log('NFC STATUS POST → ERROR', e);
-      throw Exception('Update NFC status error: $e');
+      _log('MARK NOTIFICATION READ → ERROR', e);
+      throw Exception('Mark notification read error: $e');
     }
   }
 
-  /// Palm Vein Enrollment: Create Session (Customer)
-  /// POST /api/palm/enroll/sessions
-  static Future<Map<String, dynamic>> createPalmEnrollSession() async {
+  /// Payment Method Default Check
+  /// GET /api/payment-methods/default/check
+  static Future<Map<String, dynamic>> getDefaultPaymentMethodCheck() async {
     try {
-      final url = '$baseUrl/palm/enroll/sessions';
       final headers = await _bearerHeaders();
+      final url = '$baseUrl/payment-methods/default/check';
 
-      _log('PALM ENROLL SESSION CREATE → URL', url);
+      _log('PAYMENT METHOD DEFAULT CHECK → URL', url);
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      _log('PAYMENT METHOD DEFAULT CHECK → STATUS', response.statusCode);
+      _log('PAYMENT METHOD DEFAULT CHECK → RESPONSE', response.body);
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        return responseData;
+      }
+
+      throw Exception(
+        responseData['message'] ?? 'Failed to fetch default payment method',
+      );
+    } catch (e) {
+      _log('PAYMENT METHOD DEFAULT CHECK → ERROR', e);
+      throw Exception('Default payment method check error: $e');
+    }
+  }
+
+  /// NFC Enrollment Session
+  /// POST /api/payment-methods/{id}/nfc/session
+  static Future<Map<String, dynamic>> createNfcSession({
+    required int paymentMethodId,
+  }) async {
+    try {
+      final headers = await _bearerHeaders();
+      final url = '$baseUrl/payment-methods/$paymentMethodId/nfc/session';
+
+      _log('NFC SESSION CREATE → URL', url);
 
       final response = await http.post(
         Uri.parse(url),
         headers: headers,
         body: jsonEncode({}),
+      );
+
+      _log('NFC SESSION CREATE → STATUS', response.statusCode);
+      _log('NFC SESSION CREATE → RESPONSE', response.body);
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return responseData;
+      }
+
+      throw Exception(
+        responseData['message'] ?? 'Failed to create NFC enrollment session',
+      );
+    } catch (e) {
+      _log('NFC SESSION CREATE → ERROR', e);
+      throw Exception('Create NFC session error: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getNfcSessionStatus({
+    required String sessionId,
+  }) async {
+    try {
+      final headers = await _bearerHeaders();
+      final url = '$baseUrl/nfc/enroll/sessions/$sessionId';
+
+      _log('NFC SESSION STATUS → URL', url);
+
+      final response = await http.get(Uri.parse(url), headers: headers);
+
+      _log('NFC SESSION STATUS → STATUS', response.statusCode);
+      _log('NFC SESSION STATUS → RESPONSE', response.body);
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return responseData;
+      }
+
+      throw Exception(
+        responseData['message'] ?? 'Failed to fetch NFC session status',
+      );
+    } catch (e) {
+      _log('NFC SESSION STATUS → ERROR', e);
+      throw Exception('Get NFC session status error: $e');
+    }
+  }
+
+  /// NFC Toggle
+  /// POST /api/payment-methods/{id}/nfc/toggle
+  static Future<Map<String, dynamic>> toggleNfc({
+    required int paymentMethodId,
+    required String action,
+  }) async {
+    try {
+      final headers = await _bearerHeaders();
+      final url = '$baseUrl/payment-methods/$paymentMethodId/nfc/toggle';
+      final body = {'action': action};
+
+      _log('NFC TOGGLE → URL', url);
+      _log('NFC TOGGLE → BODY', body);
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      _log('NFC TOGGLE → STATUS', response.statusCode);
+      _log('NFC TOGGLE → RESPONSE', response.body);
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return responseData;
+      }
+
+      throw Exception(responseData['message'] ?? 'Failed to toggle NFC');
+    } catch (e) {
+      _log('NFC TOGGLE → ERROR', e);
+      throw Exception('Toggle NFC error: $e');
+    }
+  }
+
+  /// Palm Vein Enrollment: Create Session (Customer)
+  /// POST /api/palm/enroll/sessions
+  static Future<Map<String, dynamic>> createPalmEnrollSession({
+    required int paymentMethodId,
+  }) async {
+    try {
+      final url = '$baseUrl/palm/enroll/sessions';
+      final headers = await _bearerHeaders();
+      final body = {'payment_method_id': paymentMethodId};
+
+      _log('PALM ENROLL SESSION CREATE → URL', url);
+      _log('PALM ENROLL SESSION CREATE → BODY', body);
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(body),
       );
 
       _log('PALM ENROLL SESSION CREATE → STATUS', response.statusCode);
@@ -739,6 +1051,47 @@ class ApiService {
     } catch (e) {
       _log('PALM ENROLL SESSION CREATE → ERROR', e);
       throw Exception('Create palm enrollment session error: $e');
+    }
+  }
+
+  /// Payment Method Default Toggle
+  /// POST /api/payment-methods/{id}/default
+  static Future<Map<String, dynamic>> toggleDefaultPaymentMethod({
+    required int paymentMethodId,
+    required bool isDefault,
+  }) async {
+    try {
+      final headers = await _bearerHeaders();
+      final url = '$baseUrl/payment-methods/$paymentMethodId/default';
+      final body = {
+        'payment_method_id': paymentMethodId,
+        'is_default': isDefault,
+        'default': isDefault,
+      };
+
+      _log('PAYMENT METHOD DEFAULT TOGGLE → URL', url);
+      _log('PAYMENT METHOD DEFAULT TOGGLE → BODY', body);
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      _log('PAYMENT METHOD DEFAULT TOGGLE → STATUS', response.statusCode);
+      _log('PAYMENT METHOD DEFAULT TOGGLE → RESPONSE', response.body);
+
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return responseData;
+      }
+
+      throw Exception(
+        responseData['message'] ?? 'Failed to update default payment method',
+      );
+    } catch (e) {
+      _log('PAYMENT METHOD DEFAULT TOGGLE → ERROR', e);
+      throw Exception('Toggle default payment method error: $e');
     }
   }
 
@@ -803,12 +1156,13 @@ class ApiService {
   /// Palm Vein Enrollment: Reset (Customer)
   /// POST /api/palm/enroll/me/reset
   static Future<Map<String, dynamic>> resetPalmEnrollment({
+    required int paymentMethodId,
     required String reason,
   }) async {
     try {
       final url = '$baseUrl/palm/enroll/me/reset';
       final headers = await _bearerHeaders();
-      final body = {'reason': reason};
+      final body = {'payment_method_id': paymentMethodId, 'reason': reason};
 
       _log('PALM ENROLL RESET → URL', url);
       _log('PALM ENROLL RESET → BODY', body);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:palmpay/l10n/app_localizations.dart';
 
 /// Security note widget with lock icon
 class SecurityNote extends StatelessWidget {
@@ -6,6 +7,7 @@ class SecurityNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       height: 71,
       decoration: BoxDecoration(
@@ -27,7 +29,7 @@ class SecurityNote extends StatelessWidget {
           const SizedBox(width: 16),
           Expanded(
             child: Text(
-              'Your card number is never stored. Only secure tokens.',
+              l10n.t('security_note_card_tokens'),
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -42,4 +44,3 @@ class SecurityNote extends StatelessWidget {
     );
   }
 }
-
